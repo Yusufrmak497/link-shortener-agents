@@ -10,6 +10,7 @@ Test:
     pytest
 """
 
+import re
 import sqlite3
 import string
 from contextlib import closing
@@ -66,19 +67,53 @@ def encode(n: int) -> str:
     return "".join(reversed(chars))
 
 
+ALIAS_RE = re.compile(r"[A-Za-z0-9_-]{1,32}")
+# Paths served by other routes; an alias with these names could never redirect.
+RESERVED_ALIASES = {"docs", "redoc", "openapi.json", "stats", "shorten"}
+
+
 class ShortenRequest(BaseModel):
     url: str
+    alias: str | None = None
+
+
+def _validate_alias(alias: str) -> None:
+    if not ALIAS_RE.fullmatch(alias):
+        raise HTTPException(
+            status_code=400, detail="alias must be 1-32 characters of A-Z, a-z, 0-9, _ or -"
+        )
+    if alias in RESERVED_ALIASES:
+        raise HTTPException(status_code=400, detail="alias is reserved")
+
+
+def _insert_auto_code(conn: sqlite3.Connection, url: str) -> str:
+    """Insert a link with a base62 code, skipping ids whose code is already an alias."""
+    while True:
+        row_id = conn.execute("INSERT INTO links (url) VALUES (?)", (url,)).lastrowid
+        code = encode(row_id)
+        try:
+            conn.execute("UPDATE links SET code = ? WHERE id = ?", (code, row_id))
+            return code
+        except sqlite3.IntegrityError:
+            # Code taken by an alias: drop the placeholder; AUTOINCREMENT never reuses ids.
+            conn.execute("DELETE FROM links WHERE id = ?", (row_id,))
 
 
 @app.post("/shorten")
 def shorten(req: ShortenRequest):
     if not req.url.startswith(("http://", "https://")):
         raise HTTPException(status_code=400, detail="url must start with http:// or https://")
+    if req.alias is not None:
+        _validate_alias(req.alias)
     with closing(get_db()) as conn:
-        cur = conn.execute("INSERT INTO links (url) VALUES (?)", (req.url,))
-        row_id = cur.lastrowid
-        code = encode(row_id)
-        conn.execute("UPDATE links SET code = ? WHERE id = ?", (code, row_id))
+        if req.alias is None:
+            code = _insert_auto_code(conn, req.url)
+        else:
+            try:
+                conn.execute("INSERT INTO links (code, url) VALUES (?, ?)", (req.alias, req.url))
+            except sqlite3.IntegrityError:
+                raise HTTPException(status_code=409, detail="alias already in use") from None
+            code = req.alias
         conn.commit()
     return {"code": code, "short_url": f"/{code}"}
 
