@@ -55,4 +55,4 @@ the migration test, so the real database isn't touched. I accepted the change, a
 The reviewer's NICE TO HAVE items are left as follow-ups.
 
 ## 5. What I learned
-<!-- Yusuf: 3–5 sentences on structuring a repo for agents. -->
+Instead of telling the agent every time to run the tests and never accept `ftp://`, I wrote those rules into `AGENTS.md` and `intent.md`, so the agent reads them itself at the start of every session and they don't get forgotten. A hook is stronger than a request: asking the agent not to commit bad code is only a request, but the pre-commit hook enforces it, and the broken `ftp://` change could not be committed even if the agent had wanted to. Splitting the roles also helped, because the planner and reviewer can't edit files and only the implementer writes code, so each agent sticks to its own job and the reviewer gives an independent review instead of the code's author approving its own work.
