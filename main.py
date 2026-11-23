@@ -1,4 +1,4 @@
-"""Link Shortener — starter app for Week 5.
+"""Link Shortener — starter app for Week 4.
 
 A deliberately tiny FastAPI service you will make *agent-native*. Run it, read it,
 then use your coding agent (Antigravity by default) plus the tasks in docs/TASKS.md.

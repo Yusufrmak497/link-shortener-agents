@@ -19,5 +19,5 @@ curl -X POST localhost:8000/shorten -H 'Content-Type: application/json' \
 
 ## Files
 - `main.py` — the app (`POST /shorten`, `GET /{code}`)
-- `test_main.py` — pytest suite
+- `tests/` — pytest suite (`tests/test_main.py`, isolated DB per test in `tests/conftest.py`)
 - `docs/TASKS.md` — pick one task for the subagent exercise
