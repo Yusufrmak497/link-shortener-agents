@@ -43,7 +43,7 @@ Claude Code session ran the three subagents in order, and each one received the 
    (`ALTER TABLE … ADD COLUMN clicks … DEFAULT 0`, guarded by `PRAGMA table_info` so existing
    `links.db` files are migrated). The plan listed 6 tests to write first, plus the risks: route ordering of
    `/stats/{code}` vs `/{code}`, and a read-then-write race on the counter.
-2. **implementer**: wrote the 6 tests first and confirmed they failed, then implemented the change. It used an atomic
+2. **implementer**: wrote the 6 tests first. 5 of them failed for the right reason (`404 == 200` for the missing route, `no such column: clicks` for the migration). The sixth guards the unchanged redirect shape, so it passed both before and after, as it should. Then it implemented the change. It used an atomic
    `UPDATE … SET clicks = clicks + 1`, not a read-modify-write, and committed only when the code exists.
    `scripts/check.sh` was green with 9 tests.
 3. **reviewer** (read-only): **`VERDICT: APPROVED`**, with no MUST FIX items. It suggested a stronger "stats doesn't
